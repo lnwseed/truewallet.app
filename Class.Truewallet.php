@@ -426,6 +426,44 @@ class TrueWallet
             "Authorization" => strval($this->config["access_token"])
         ));
     }
+
+    /*
+        bank_name
+        - SCB : ธนาคารไทยพาณิชย์
+        - BBL : ธนาคารกรุงเทพ
+        - KBANK : ธนาคารกสิกรไทย
+        - KTB : ธนาคารกรุงไทย
+        - TMB : ธนาคารทหารไทย
+        - BAY : ธนาคารกรุงศรีอยุธยา
+        - TBANK : ธนาคารธนชาต
+        - CIMB : ธนาคารซีไอเอ็มบี ไทย
+        - LHBANK : ธนาคารแลนด์ แอนด์ เฮ้าส์
+        - UOB : ธนาคารยูโอบี
+        - TCRB : ธนาคารไทยเครดิตเพื่อรายย่อย
+        - CITI : ธนาคารซิตี้แบงก์
+        - SCBT : ธนาคารสแตนดาร์ดชาร์เตอร์ด
+        - ICBCT : ธนาคารไอซีบีซี ไทย
+        - GSB : ธนาคารออมสิน
+        - BAAC : ธนาคาร ธ.ก.ส.
+    */
+    public function DraftTransferBank ($bank_name, $bank_account, $amount) {
+        if (!isset($this->config["access_token"])) return false;
+		$hash = implode("|",
+							number_format(str_replace(",", "", strval($amount)), 2, ".", ""),
+							strval($bank_name),
+							str_replace(array("-", " "), "", strval($bank_account))
+						));										
+		$this->calculate_singature($hash);	
+        return $this->request("POST", "/fund-composite/v1/withdrawal/draft-transaction/", array(
+            "Authorization" => strval($this->config["access_token"]),
+            "Signature" => hash_hmac("sha256", implode("|", array(number_format(str_replace(",", "", strval($amount)), 2, ".", ""), strval($bank_name), str_replace(array("-", " "), "", strval($bank_account)))), $this->remote_key_value),
+            "X-Device" => $this->remote_key_id
+        ), array(
+            "amount" => number_format(str_replace(",", "", strval($amount)), 2, ".", ""),
+			"bank_name" => strval($bank_name),
+            "bank_account" => str_replace(array("-", " "), "", strval($bank_account))
+        ));
+    }
     
     public function calculate_singature()
     {
