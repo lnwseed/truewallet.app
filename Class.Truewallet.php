@@ -464,7 +464,74 @@ class TrueWallet
             "bank_account" => str_replace(array("-", " "), "", strval($bank_account))
         ));
     }
-    
+
+    public function SendOTPTransferBank ($draft_transaction_id = null) {
+        if (!isset($this->config["access_token"])) return false;
+        if (is_null($draft_transaction_id) && isset($this->data["draft_transaction_id"])) $draft_transaction_id = $this->data["draft_transaction_id"];
+        if (is_null($draft_transaction_id)) return false;
+		$this->request_remote_key();
+        return $this->request("PUT", "/fund-composite/v1/withdrawal/draft-transaction/".strval($draft_transaction_id)."/send-otp/", array(
+            "Authorization" => strval($this->config["access_token"]),
+            "Signature" => hash_hmac("sha256", rtrim($this->mobile_api_endpoint, "/")."/fund-composite/v1/withdrawal/draft-transaction/".strval($draft_transaction_id)."/send-otp/", $this->remote_key_value),
+            "X-Device" => $this->remote_key_id
+        ));
+    }
+
+    public function ConfirmTransferBank ($otp_code, $wait_processing = true, $draft_transaction_id = null, $otp_reference = null) {
+        if (!isset($this->config["access_token"])) return false;
+        if (is_null($draft_transaction_id) && isset($this->data["draft_transaction_id"])) $draft_transaction_id = $this->data["draft_transaction_id"];
+        if (is_null($otp_reference) && isset($this->data["otp_ref_code"])) $otp_reference = $this->data["otp_ref_code"];
+        if (is_null($draft_transaction_id) || is_null($otp_reference)) return false;
+		$this->request_remote_key();
+        $result = $this->request("POST", "/fund-composite/v2/withdrawal/transaction/", array(
+            "Authorization" => strval($this->config["access_token"]),
+            "Signature" => hash_hmac("sha256", implode("|", array(strval($draft_transaction_id), strval($otp_code), strval($otp_reference))), $this->remote_key_value),
+            "X-Device" => $this->remote_key_id
+        ), array(
+            "otp_reference" => strval($otp_reference),
+            "otp_code" => strval($otp_code),
+            "draft_transaction_id" => strval($draft_transaction_id)
+        ));
+        if (isset($result["data"]["withdraw_status"]) && $result["data"]["withdraw_status"] === "VERIFIED") {
+            $transaction_id = strval($draft_transaction_id);
+            if ($wait_processing) {
+                for ($i = 0; $i < 10; $i++) {
+                    if (isset($result["data"]["withdraw_status"])) {
+                        if ($result["data"]["withdraw_status"] === "VERIFIED" || $result["data"]["withdraw_status"] === "PROCESSING") {
+                            if ($i > 0) sleep(1);
+							$this->request_remote_key();
+                            $result = $this->request("GET", "/fund-composite/v1/withdrawal/transaction/".$transaction_id."/status/", array(
+                                "Authorization" => strval($this->config["access_token"]),
+                                "Signature" => hash_hmac("sha256", rtrim($this->mobile_api_endpoint, "/")."/fund-composite/v1/withdrawal/transaction/".$transaction_id."/status/", $this->remote_key_value),
+                                "X-Device" => $this->remote_key_id
+                            ));
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+            if (isset($result["data"]["withdraw_status"])) {
+                $this->data["transaction_id"] = $transaction_id;
+            }
+        }
+        return $result;
+    }
+
+    public function GetDetailTransferBank ($transaction_id = null) {
+        if (!isset($this->config["access_token"])) return false;
+        if (is_null($transaction_id) && isset($this->data["transaction_id"])) $transaction_id = $this->data["transaction_id"];
+        if (is_null($transaction_id)) return false;
+		$this->request_remote_key();
+        return $this->request("GET", "/fund-composite/v1/withdrawal/transaction/".strval($transaction_id), array(
+            "Authorization" => strval($this->config["access_token"]),
+            "Signature" => hash_hmac("sha256", rtrim($this->mobile_api_endpoint, "/")."/fund-composite/v1/withdrawal/transaction/".strval($transaction_id), $this->remote_key_value),
+            "X-Device" => $this->remote_key_id
+        ));
+    }
+	
     public function calculate_singature()
     {
     }
