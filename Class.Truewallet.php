@@ -448,16 +448,16 @@ class TrueWallet
     */
     public function DraftTransferBank ($bank_name, $bank_account, $amount) {
         if (!isset($this->config["access_token"])) return false;
-		$hash = implode("|",
-							number_format(str_replace(",", "", strval($amount)), 2, ".", ""),
-							strval($bank_name),
-							str_replace(array("-", " "), "", strval($bank_account))
-						));										
+		$hash = implode("|", array(
+									number_format(str_replace(",", "", strval($amount)), 2, ".", ""),
+									strval($bank_name),
+									str_replace(array("-", " "), "", strval($bank_account))
+					   ));										
 		$this->calculate_singature($hash);	
         return $this->request("POST", "/fund-composite/v1/withdrawal/draft-transaction/", array(
-            "Authorization" => strval($this->config["access_token"]),
-            "Signature" => hash_hmac("sha256", implode("|", array(number_format(str_replace(",", "", strval($amount)), 2, ".", ""), strval($bank_name), str_replace(array("-", " "), "", strval($bank_account)))), $this->remote_key_value),
-            "X-Device" => $this->remote_key_id
+            "X-Device" => $this->remote_key_id,
+			"Authorization" => strval($this->config["access_token"]),
+			"Signature" => $this->remote_key_value,
         ), array(
             "amount" => number_format(str_replace(",", "", strval($amount)), 2, ".", ""),
 			"bank_name" => strval($bank_name),
