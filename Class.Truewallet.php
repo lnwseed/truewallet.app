@@ -417,7 +417,16 @@ class TrueWallet
         }
         return $result;
     }
-  
+
+    public function GetDetailTransferP2P ($transaction_id = null) {
+        if (!isset($this->config["access_token"])) return false;
+        if (is_null($transaction_id) && isset($this->data["transaction_id"])) $transaction_id = $this->data["transaction_id"];
+        if (is_null($transaction_id)) return false;
+        return $this->request("GET", "/transfer-composite/v1/p2p-transfer/transactions/".strval($transaction_id)."/detail/", array(
+            "Authorization" => strval($this->config["access_token"])
+        ));
+    }
+    
     public function calculate_singature()
     {
     }
